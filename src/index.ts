@@ -1,16 +1,16 @@
 import {
-  init,
-  update,
-  draw
+  Game
 } from './tetris'
 
-const canvas = document.getElementById('cnvs')
+const canvas = document.getElementById('cnvs') as HTMLCanvasElement
 
 const tickLength = 15 //ms
-let lastTick
-let stopCycle
+let lastTick = 0
+let stopCycle = 0
 
-function run(tFrame) {
+const game = new Game()
+
+function run(tFrame: number) {
   stopCycle = window.requestAnimationFrame(run)
 
   const nextTick = lastTick + tickLength
@@ -23,10 +23,10 @@ function run(tFrame) {
 
   for (let i = 0; i < numTicks; i++) {
     lastTick = lastTick + tickLength
-    update(lastTick, stopGame)
+    game.update(lastTick, stopGame)
   }
 
-  draw(canvas, tFrame)
+  game.draw(canvas, tFrame)
 }
 
 function stopGame() {
@@ -34,5 +34,5 @@ function stopGame() {
 }
 
 lastTick = performance.now()
-init(canvas)
-run()
+
+run(0)

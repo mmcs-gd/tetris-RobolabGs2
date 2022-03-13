@@ -1,10 +1,11 @@
+import Piece from "./Piece"
+
 export default class GameField {
-  constructor(bottomRow) {
-    this.pieces = []
-    this.bottomRow = bottomRow
+  public readonly pieces: Piece[] = []
+  constructor(public bottomRow: number) {
   }
 
-  pieceSpaceIsUnoccupied(piece) {
+  pieceSpaceIsUnoccupied(piece: Piece) {
     return this.pieces.every(p => (
       !(
         intersects(piece.left, piece.right, p.left, p.right) &&
@@ -13,7 +14,7 @@ export default class GameField {
     ))
   }
 
-  hasTouchBottom(piece) {
+  hasTouchBottom(piece: Piece) {
     const touchBottomRow = piece.bottom >= this.bottomRow
 
     const touchAnotherPiece = this.pieces.some(p => (
@@ -26,11 +27,11 @@ export default class GameField {
     return touchBottomRow || touchAnotherPiece
   }
 
-  append(piece) {
+  append(piece: Piece) {
     this.pieces.push(piece)
   }
 
-  draw(ctx) {
+  draw(ctx: CanvasRenderingContext2D) {
     this.pieces.forEach(t => t.draw(ctx))
   }
 }
@@ -46,6 +47,6 @@ export default class GameField {
  * c----d
  *    a-----b
  */
-function intersects(a, b, c, d) {
+function intersects(a: number, b: number, c: number, d: number) {
   return (a >= c && a <= d) || (b >= c && b <= d)
 }

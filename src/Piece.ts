@@ -3,13 +3,13 @@ const HEIGHT = 2
 const SIZE = 22
 
 export default class Piece {
-  constructor(row, column, color) {
-    this.row = row
-  	this.column = column
-  	this.color = color
+  constructor(
+    public row: number,
+    public column: number,
+    public color: string) {
   }
 
-  shift(di, dj) {
+  shift(di: number, dj: number) {
     this.row += di
     this.column += dj
   }
@@ -30,12 +30,12 @@ export default class Piece {
     return this.column + HEIGHT - 1
   }
 
-  draw(ctx) {
+  draw(ctx: CanvasRenderingContext2D) {
     ctx.fillStyle = this.color
     ctx.strokeStyle = this.color
 
-    for(let i = 0; i < WIDTH; i++) {
-      for(let j = 0; j < HEIGHT; j++) {
+    for (let i = 0; i < WIDTH; i++) {
+      for (let j = 0; j < HEIGHT; j++) {
         const [x, y] = toCoords(this.row + i, this.column + j)
         drawRoundRect(ctx, x, y, 20, 20, 5, true, false)
       }
@@ -43,23 +43,27 @@ export default class Piece {
   }
 }
 
-function toCoords(i, j) {
+function toCoords(i: number, j: number) {
   return [i * SIZE + 1, j * SIZE + 1]
 }
 
-function drawRoundRect(ctx, x, y, width, height, radius, fill, stroke) {
+type Corners = "tl" | "tr" | "br" | "bl"
+
+function drawRoundRect(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number,
+  width: number, height: number,
+  radius: number | Record<Corners, number> = 5,
+  fill: boolean, stroke = true) {
   if (typeof stroke === 'undefined') {
     stroke = true
   }
-  if (typeof radius === 'undefined') {
-    radius = 5
-  }
   if (typeof radius === 'number') {
-    radius = {tl: radius, tr: radius, br: radius, bl: radius}
+    radius = { tl: radius, tr: radius, br: radius, bl: radius }
   } else {
-    var defaultRadius = {tl: 0, tr: 0, br: 0, bl: 0}
-    for (var side in defaultRadius) {
-      radius[side] = radius[side] || defaultRadius[side]
+    const defaultRadius = { tl: 0, tr: 0, br: 0, bl: 0 } as Record<Corners, number>
+    for (let side in defaultRadius) {
+      radius[side as Corners] = radius[side as Corners] || defaultRadius[side as Corners]
     }
   }
   ctx.beginPath()

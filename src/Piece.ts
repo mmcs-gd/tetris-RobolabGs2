@@ -6,7 +6,11 @@ export default class Piece {
   constructor(
     public row: number,
     public column: number,
-    public color: string) {
+    public color: string,
+    public mask = [
+      [1, 0],
+      [1, 1]
+    ]) {
   }
 
   shift(di: number, dj: number) {
@@ -19,7 +23,7 @@ export default class Piece {
   }
 
   get right() {
-    return this.row + WIDTH - 1
+    return this.row + this.mask.length - 1
   }
 
   get top() {
@@ -27,20 +31,27 @@ export default class Piece {
   }
 
   get bottom() {
-    return this.column + HEIGHT - 1
+    return this.column + this.mask.length - 1
   }
 
   draw(ctx: CanvasRenderingContext2D) {
     ctx.fillStyle = this.color
     ctx.strokeStyle = this.color
 
-    for (let i = 0; i < WIDTH; i++) {
-      for (let j = 0; j < HEIGHT; j++) {
+    for (let i = 0; i < this.mask[0].length; i++) {
+      for (let j = 0; j < this.mask.length; j++) {
+        if(!this.mask[j][i])
+          continue
         const [x, y] = toCoords(this.row + i, this.column + j)
         drawRoundRect(ctx, x, y, 20, 20, 5, true, false)
       }
     }
   }
+}
+
+export function drawSquare(ctx: CanvasRenderingContext2D, i: number, j: number) {
+  const [x, y] = toCoords(i, j)
+  drawRoundRect(ctx, x, y)
 }
 
 function toCoords(i: number, j: number) {
@@ -52,9 +63,9 @@ type Corners = "tl" | "tr" | "br" | "bl"
 function drawRoundRect(
   ctx: CanvasRenderingContext2D,
   x: number, y: number,
-  width: number, height: number,
+  width: number = 20, height: number = 20,
   radius: number | Record<Corners, number> = 5,
-  fill: boolean, stroke = true) {
+  fill: boolean = true, stroke = true) {
   if (typeof stroke === 'undefined') {
     stroke = true
   }

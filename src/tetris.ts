@@ -24,19 +24,19 @@ export class Game {
     0,
     getRandomColor()
   )
-  private field = new GameField(ROWS - 1)
+  private field = new GameField(ROWS, COLUMNS)
   private prevSec = 0
   constructor() {
     document.addEventListener('keydown', this.onKeyDown.bind(this))
   }
-
+  private tickTime = 150
   public update(time: number, stopGame: () => void) {
     const { prevSec, activePiece, field } = this
 
     if (activePiece) {
-      if (prevSec != Math.ceil(time / 500)) {
+      if (prevSec != Math.ceil(time / this.tickTime)) {
         activePiece.shift(0, 1)
-        this.prevSec = Math.ceil(time / 500)
+        this.prevSec = Math.ceil(time / this.tickTime)
 
         if (field.hasTouchBottom(activePiece)) {
           field.append(activePiece)
@@ -45,10 +45,45 @@ export class Game {
       }
     } else {
       this.activePiece = new Piece(
-        getRandomInt(COLUMNS - 2),
+        2,//getRandomInt(COLUMNS - 2),
         0,
-        getRandomColor()
+        getRandomColor(),
+        [
+          [
+            [1, 0],
+            [1, 1]
+          ], [
+            [1, 1],
+            [0, 1]
+          ], [
+            [1, 1],
+            [1, 1],
+          ], [
+            [0, 0, 0],
+            [1, 1, 1],
+            [0, 1, 0],
+          ], [
+            [0, 1, 0],
+            [1, 1, 0],
+            [0, 1, 0],
+          ], [
+            [0, 1, 0],
+            [0, 1, 1],
+            [0, 1, 0],
+          ], [
+            [0, 1, 0],
+            [1, 1, 1],
+            [0, 0, 0],
+          ], [
+            [0, 1, 0],
+            [1, 1, 1],
+            [0, 1, 0],
+          ],
+        ][getRandomInt(8)]
       )
+      if (!field.pieceSpaceIsUnoccupied(this.activePiece)) {
+          stopGame()
+      }
     }
 
     // if there is no unoccupied space call stopGame()

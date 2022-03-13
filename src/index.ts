@@ -8,7 +8,7 @@ const tickLength = 15 //ms
 let lastTick = 0
 let stopCycle = 0
 
-const game = new Game()
+let game = new Game()
 
 function run(tFrame: number) {
   stopCycle = window.requestAnimationFrame(run)
@@ -21,9 +21,9 @@ function run(tFrame: number) {
     numTicks = Math.floor(timeSinceTick / tickLength)
   }
 
-  for (let i = 0; i < numTicks; i++) {
+  for (let i = 0; i < Math.min(1, numTicks); i++) {
     lastTick = lastTick + tickLength
-    game.update(lastTick, stopGame)
+    game.update(lastTick, restartGame)
   }
 
   game.draw(canvas, tFrame)
@@ -31,6 +31,10 @@ function run(tFrame: number) {
 
 function stopGame() {
   window.cancelAnimationFrame(stopCycle)
+}
+
+function restartGame() {
+  game = new Game()
 }
 
 lastTick = performance.now()

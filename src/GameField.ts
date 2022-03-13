@@ -1,52 +1,48 @@
-import Piece from "./Piece"
+import Piece, { drawSquare } from "./Piece"
 
 export default class GameField {
-  public readonly pieces: Piece[] = []
-  constructor(public bottomRow: number) {
+  private readonly field: (string | undefined)[][]
+  public bottomRow: number = this.rows - 1
+  constructor(public rows: number, public colums: number) {
+    this.field = new Array(colums)
+    for (let i = 0; i < colums; i++)
+      this.field[i] = new Array(rows)
   }
 
   pieceSpaceIsUnoccupied(piece: Piece) {
-    return this.pieces.every(p => (
-      !(
-        intersects(piece.left, piece.right, p.left, p.right) &&
-        intersects(piece.top, piece.bottom, p.top, p.bottom)
-      )
-    ))
+    const mask = piece.mask
+    for (let i = 0; i < mask.length; i++)
+      for (let j = 0; j < mask[0].length; j++)
+        if (mask[j][i] && this.field[i + piece.row][j + piece.column])
+          return false
+    return true
   }
 
   hasTouchBottom(piece: Piece) {
-    const touchBottomRow = piece.bottom >= this.bottomRow
-
-    const touchAnotherPiece = this.pieces.some(p => (
-      intersects(
-        piece.left, piece.right,
-        p.left, p.right
-      ) && piece.bottom + 1 == p.top
-    ))
-
-    return touchBottomRow || touchAnotherPiece
+    if (piece.bottom >= this.bottomRow)
+      return true
+    
+    const mask = piece.mask
+    for (let i = 0; i < mask.length; i++)
+      for (let j = 0; j < mask[0].length; j++)
+        if (mask[j][i] && this.field[i + piece.row][j + piece.column + 1])
+          return true
+    return false
   }
 
   append(piece: Piece) {
-    this.pieces.push(piece)
+    const mask = piece.mask
+    for (let i = 0; i < mask.length; i++)
+      for (let j = 0; j < mask[0].length; j++)
+        if (mask[j][i])
+          this.field[i + piece.row][j + piece.column] = piece.color
   }
 
   draw(ctx: CanvasRenderingContext2D) {
-    this.pieces.forEach(t => t.draw(ctx))
+    for (let i = 0; i < this.colums; i++)
+      for (let j = 0; j < this.rows; j++)
+        if (ctx.fillStyle = ctx.strokeStyle = this.field[i][j] || "") {
+          drawSquare(ctx, i, j)
+        }
   }
-}
-
-/*
- * There are two possible situations:
- *
- * a----b
- *    c-----d
- *
- * or:
- *
- * c----d
- *    a-----b
- */
-function intersects(a: number, b: number, c: number, d: number) {
-  return (a >= c && a <= d) || (b >= c && b <= d)
 }

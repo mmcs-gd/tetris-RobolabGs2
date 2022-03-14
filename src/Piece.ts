@@ -2,50 +2,77 @@ const WIDTH = 2
 const HEIGHT = 2
 const SIZE = 22
 
+export class Mask {
+  public readonly size = this.mask.length;
+  constructor(private mask: number[][]) {
+    if (mask.some(line => line.length != this.size))
+      throw new Error(`Invalid mask: dimensions mismatch. \n${mask.map(l => l.join(", ")).join("\n")}`)
+  }
+  get(row: number, column: number, rotation: number = 0) {
+    switch (rotation) {
+      case 0:
+        return this.mask[row][column]
+      case 1:
+        return this.mask[column][this.size - row - 1]
+      case 2:
+        return this.mask[this.size - row - 1][this.size - column - 1]
+      case 3:
+        return this.mask[this.size - column - 1][row]
+      default:
+        throw new Error(`Unexpected rotation ${rotation}`)
+    }
+  }
+}
+
 export default class Piece {
+  public readonly size: number;
   constructor(
     public row: number,
     public column: number,
     public color: string,
-    public mask = [
-      [1, 0],
-      [1, 1]
-    ]) {
+    private mask: Mask) {
+      this.size = this.mask.size;
   }
+
+  private rotation = 0
 
   shift(di: number, dj: number) {
     this.row += di
     this.column += dj
   }
-
-  get left() {
-    return this.row
+  rotate(delta = 1) {
+    this.rotation = (this.rotation+4+delta)%4;
   }
 
-  get right() {
-    return this.row + this.mask.length - 1
+
+  forEach(action: (i: number, j: number) => void): void {
+    for (let i = 0; i < this.size; i++) {
+      for (let j = 0; j < this.size; j++) {
+        if (!this.mask.get(j, i, this.rotation))
+          continue
+        action(this.column + i, this.row + j)
+      }
+    }
   }
 
-  get top() {
-    return this.column
-  }
-
-  get bottom() {
-    return this.column + this.mask.length - 1
+  any(condition: (i: number, j: number) => boolean): boolean {
+    for (let i = 0; i < this.size; i++) {
+      for (let j = 0; j < this.size; j++) {
+        if (this.mask.get(j, i, this.rotation) && condition(this.column + i, this.row + j))
+          return true
+      }
+    }
+    return false
   }
 
   draw(ctx: CanvasRenderingContext2D) {
     ctx.fillStyle = this.color
     ctx.strokeStyle = this.color
-
-    for (let i = 0; i < this.mask[0].length; i++) {
-      for (let j = 0; j < this.mask.length; j++) {
-        if(!this.mask[j][i])
-          continue
-        const [x, y] = toCoords(this.row + i, this.column + j)
-        drawRoundRect(ctx, x, y, 20, 20, 5, true, false)
-      }
-    }
+    this.forEach((i, j) => {
+      drawRoundRect(ctx, ...toCoords(i, j), 20, 20, 5, true, false)
+    })
+    // ctx.strokeStyle = "red"
+    // ctx.strokeRect(...toCoords(this.column, this.row), SIZE * this.mask.size, SIZE * this.mask.size)
   }
 }
 
@@ -54,8 +81,8 @@ export function drawSquare(ctx: CanvasRenderingContext2D, i: number, j: number) 
   drawRoundRect(ctx, x, y)
 }
 
-function toCoords(i: number, j: number) {
-  return [i * SIZE + 1, j * SIZE + 1]
+export function toCoords(i: number, j: number) {
+  return [i * SIZE + 1, j * SIZE + 1] as const
 }
 
 type Corners = "tl" | "tr" | "br" | "bl"

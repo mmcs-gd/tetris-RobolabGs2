@@ -76,27 +76,8 @@ export class Game {
   private tickTime = 150
   public update(userInput: Actions[], time: number, stopGame: () => void) {
     const { prevSec, activePiece, field } = this
-    // TODO
     for (let input of userInput) {
-      switch (input) {
-        case Actions.MoveRight:
-          this.moveActivePieceRight()
-          break
-        case Actions.MoveLeft:
-          this.moveActivePieceLeft()
-          break
-        case Actions.RotateRight:
-          if (this.activePiece) {
-            this.activePiece.rotate(1)
-            if (!this.field.pieceSpaceIsUnoccupied(this.activePiece))
-              this.activePiece.rotate(-1)
-          }
-          break
-        case Actions.SoftDrop:
-          if (this.activePiece)
-            this.pieceDown(this.activePiece, this.field)
-          break
-      }
+      this.processInput(input)
     }
     if (activePiece) {
       if (prevSec != Math.ceil(time / this.tickTime)) {
@@ -113,41 +94,59 @@ export class Game {
         stopGame()
       }
     }
-
     // if there is no unoccupied space call stopGame()
   }
+
+  private processInput(input: Actions) {
+    switch (input) {
+      case Actions.MoveRight:
+        this.tryShift(0, 1)
+        break
+      case Actions.MoveLeft:
+        this.tryShift(0, -1)
+        break
+      case Actions.RotateRight:
+        this.tryRotate(1)
+        break
+      case Actions.RotateLeft:
+        this.tryRotate(-1)
+        break
+      case Actions.SoftDrop:
+        if (this.activePiece)
+          this.pieceDown(this.activePiece, this.field)
+        break
+      case Actions.HardDrop:
+        while (this.activePiece)
+          this.pieceDown(this.activePiece, this.field)
+        break
+    }
+  }
+
   private pieceDown(activePiece: Piece, field: GameField) {
-    activePiece.shift(1, 0)
+    if (!field.hasTouchBottom(activePiece))
+      activePiece.shift(1, 0)
     if (field.hasTouchBottom(activePiece)) {
       field.append(activePiece)
       this.activePiece = null
     }
   }
 
-  private moveActivePieceRight() {
+  private tryShift(di: number, dj: number) {
     const { activePiece, field } = this
-
     if (!activePiece) return
-
-    activePiece.shift(0, 1)
+    activePiece.shift(di, dj)
     if (!field.pieceSpaceIsUnoccupied(activePiece)) {
-      // revert move beacaue is not allowed
-      activePiece.shift(0, -1)
+      activePiece.shift(-di, -dj)
     }
   }
-
-  private moveActivePieceLeft() {
+  private tryRotate(r: number) {
     const { activePiece, field } = this
-
     if (!activePiece) return
-
-    activePiece.shift(0, -1)
+    activePiece.rotate(r)
     if (!field.pieceSpaceIsUnoccupied(activePiece)) {
-      // revert move beacaue is not allowed
-      activePiece.shift(0, 1)
+      activePiece.rotate(-r)
     }
   }
-
   public draw(canvas: HTMLCanvasElement, time: number) {
     const ctx = canvas.getContext('2d')!
     ctx.clearRect(0, 0, canvas.width, canvas.height)

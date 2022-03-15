@@ -73,7 +73,7 @@ export class Game {
   )
   private field = new GameField(ROWS, COLUMNS)
   private prevSec = 0
-  private tickTime = 150
+  private tickTime = 1000
   public update(userInput: Actions[], time: number, stopGame: () => void) {
     const { prevSec, activePiece, field } = this
     for (let input of userInput) {
@@ -82,7 +82,11 @@ export class Game {
     if (activePiece) {
       if (prevSec != Math.ceil(time / this.tickTime)) {
         this.prevSec = Math.ceil(time / this.tickTime)
-        this.pieceDown(activePiece, field)
+        if (field.hasTouchBottom(activePiece)) {
+          this.fixPiece(field, activePiece)
+        } else {
+          this.pieceDown(activePiece, field)
+        }
       }
     } else {
       this.activePiece = new Piece(
@@ -95,6 +99,11 @@ export class Game {
       }
     }
     // if there is no unoccupied space call stopGame()
+  }
+
+  private fixPiece(field: GameField, activePiece: Piece) {
+    field.append(activePiece)
+    this.activePiece = null
   }
 
   private processInput(input: Actions) {
@@ -116,19 +125,20 @@ export class Game {
           this.pieceDown(this.activePiece, this.field)
         break
       case Actions.HardDrop:
-        while (this.activePiece)
-          this.pieceDown(this.activePiece, this.field)
+        if (this.activePiece) {
+          while (this.pieceDown(this.activePiece, this.field));
+          this.fixPiece(this.field, this.activePiece)
+        }
         break
     }
   }
 
-  private pieceDown(activePiece: Piece, field: GameField) {
-    if (!field.hasTouchBottom(activePiece))
+  private pieceDown(activePiece: Piece, field: GameField): boolean {
+    if (!field.hasTouchBottom(activePiece)) {
       activePiece.shift(1, 0)
-    if (field.hasTouchBottom(activePiece)) {
-      field.append(activePiece)
-      this.activePiece = null
+      return true
     }
+    return false
   }
 
   private tryShift(di: number, dj: number) {

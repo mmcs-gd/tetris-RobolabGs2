@@ -33,11 +33,12 @@ export default class GameField {
   draw(ctx: CanvasRenderingContext2D) {
     for (let i = 0; i < this.colums; i++)
       for (let j = 0; j < this.rows; j++) {
-        if (ctx.fillStyle = ctx.strokeStyle = this.field[j][i] || "") {
+        ctx.strokeStyle = "#444"
+        const [x, y] = toCoords(i, j)
+        ctx.strokeRect(x-1, y-1, 22, 22)
+        if (ctx.fillStyle = this.field[j][i] || "") {
           drawSquare(ctx, i, j)
         }
-        // ctx.fillStyle = "#ffffff"
-        // ctx.fillText(`|${j},${i}|`, ...toCoords(i, j+0.5))
       }
   }
 }

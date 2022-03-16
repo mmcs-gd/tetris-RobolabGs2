@@ -13,6 +13,10 @@
       justify-content: center;
       align-items: center;
     }
+    body {
+      display: flex;
+      flex-direction: column-reverse;
+    }
     canvas {
       display:block;
       width: 264px;
@@ -22,6 +26,7 @@
   </style>
 </head>
 <body>
+  <div>Lines: <span id="lines"></span></div>
 	<canvas width="264px" height="528px" id='cnvs'></canvas>
 	<script src="./src/index.ts" type="module"></script>
 </body>

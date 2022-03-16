@@ -4,7 +4,7 @@ import {
 } from './tetris'
 
 const canvas = document.getElementById('cnvs') as HTMLCanvasElement
-
+const linesCounter = document.getElementById('lines') as HTMLElement
 const tickLength = 15 //ms
 let lastTick = 0
 let stopCycle = 0
@@ -19,11 +19,17 @@ const keyboardMapping: Record<string, Actions | undefined> = {
   "ArrowDown": Actions.SoftDrop,
   "Space": Actions.HardDrop,
 }
-let inputBuffer = new Array<Actions>()
+let inputBuffer = new Array<boolean>()
+console.log(inputBuffer)
+document.addEventListener('keyup', function (ev: KeyboardEvent) {
+  const action = keyboardMapping[ev.code]
+  if (action !== undefined)
+    inputBuffer[action] = false
+})
 document.addEventListener('keydown', function (ev: KeyboardEvent) {
   const action = keyboardMapping[ev.code]
   if (action !== undefined)
-    inputBuffer.push(action)
+    inputBuffer[action] = true
 })
 
 function run(tFrame: number) {
@@ -40,7 +46,7 @@ function run(tFrame: number) {
   for (let i = 0; i < Math.min(1, numTicks); i++) {
     lastTick = lastTick + tickLength
     game.update(inputBuffer, lastTick, restartGame)
-    inputBuffer = []
+    linesCounter.textContent = game.linesCount.toString()
   }
 
   game.draw(canvas, tFrame)

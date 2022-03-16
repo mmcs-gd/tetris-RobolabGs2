@@ -65,6 +65,13 @@ export enum Actions {
   RotateLeft, RotateRight,
   SoftDrop, HardDrop,
 }
+
+export enum ButtonState {
+  Free = 0,
+  Press = 1,
+  StartPress = 2,
+}
+
 export class Game {
   private activePiece: Piece | null = new Piece(
     0,
@@ -74,11 +81,14 @@ export class Game {
   private field = new GameField(ROWS, COLUMNS)
   private prevSec = 0
   private tickTime = 1000
-  public update(userInput: Actions[], time: number, stopGame: () => void) {
+  private shiftTime = 50
+  private lastShift = 0
+  public linesCount = 0
+  private buttonStates = new Array<boolean>()
+  public update(userInput: boolean[], time: number, stopGame: () => void) {
     const { prevSec, activePiece, field } = this
-    for (let input of userInput) {
-      this.processInput(input)
-    }
+    this.processInput(this.buttonStates, userInput, time)
+    this.buttonStates = [...userInput]
     if (activePiece) {
       if (prevSec != Math.ceil(time / this.tickTime)) {
         this.prevSec = Math.ceil(time / this.tickTime)
@@ -102,34 +112,50 @@ export class Game {
   }
 
   private fixPiece(field: GameField, activePiece: Piece) {
-    field.append(activePiece)
+    this.linesCount+=field.append(activePiece)
     this.activePiece = null
   }
 
-  private processInput(input: Actions) {
-    switch (input) {
-      case Actions.MoveRight:
-        this.tryShift(0, 1)
-        break
-      case Actions.MoveLeft:
-        this.tryShift(0, -1)
-        break
-      case Actions.RotateRight:
-        this.tryRotate(1)
-        break
-      case Actions.RotateLeft:
-        this.tryRotate(-1)
-        break
-      case Actions.SoftDrop:
-        if (this.activePiece)
-          this.pieceDown(this.activePiece, this.field)
-        break
-      case Actions.HardDrop:
-        if (this.activePiece) {
-          while (this.pieceDown(this.activePiece, this.field));
-          this.fixPiece(this.field, this.activePiece)
+  private processInput(oldInput: boolean[], input: boolean[], time: number) {
+    let shifted = false
+    for (let action = 0 as Actions; action < input.length; action++) {
+      if (input[action]) {
+        if (!oldInput[action])
+          switch (action) {
+            case Actions.RotateRight:
+              this.tryRotate(1)
+              break
+            case Actions.RotateLeft:
+              this.tryRotate(-1)
+              break
+            case Actions.HardDrop:
+              if (this.activePiece) {
+                this.pieceHardDown(this.activePiece, this.field);
+                this.fixPiece(this.field, this.activePiece)
+              }
+              break
+          }
+        else if (time - this.lastShift >= this.shiftTime) {
+          shifted = true
+          switch (action) {
+            case Actions.MoveRight:
+              this.tryShift(0, 1)
+              break
+            case Actions.MoveLeft:
+              this.tryShift(0, -1)
+              break
+            case Actions.SoftDrop:
+              if (this.activePiece)
+                this.pieceDown(this.activePiece, this.field)
+              break
+            default:
+              shifted = false
+          }
         }
-        break
+      }
+    }
+    if(shifted) {
+      this.lastShift = time
     }
   }
 
@@ -140,7 +166,9 @@ export class Game {
     }
     return false
   }
-
+  private pieceHardDown(activePiece: Piece, field: GameField): void {
+    while (this.pieceDown(activePiece, this.field));
+  }
   private tryShift(di: number, dj: number) {
     const { activePiece, field } = this
     if (!activePiece) return
@@ -165,8 +193,11 @@ export class Game {
 
     if (activePiece) {
       activePiece.draw(ctx)
+      const backupRow = activePiece.row
+      this.pieceHardDown(activePiece, this.field)
+      activePiece.draw(ctx, false, true)
+      activePiece.row = backupRow
     }
-
     field.draw(ctx)
   }
 }

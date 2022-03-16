@@ -65,11 +65,11 @@ export default class Piece {
     return false
   }
 
-  draw(ctx: CanvasRenderingContext2D) {
+  draw(ctx: CanvasRenderingContext2D, fill = true, stroke = false) {
     ctx.fillStyle = this.color
     ctx.strokeStyle = this.color
     this.forEach((i, j) => {
-      drawRoundRect(ctx, ...toCoords(i, j), 20, 20, 5, true, false)
+      drawRoundRect(ctx, ...toCoords(i, j), 20, 20, 5, fill, stroke)
     })
     // ctx.strokeStyle = "red"
     // ctx.strokeRect(...toCoords(this.column, this.row), SIZE * this.mask.size, SIZE * this.mask.size)

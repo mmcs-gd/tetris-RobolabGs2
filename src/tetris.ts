@@ -73,46 +73,48 @@ export enum ButtonState {
 }
 
 export class Game {
-  private activePiece: Piece | null = new Piece(
-    0,
-    getRandomInt(COLUMNS - 2),
-    ...getRandomItem(PIECES),
-  )
+  private activePiece: Piece | null = new Piece(0, 5, ...getRandomItem(PIECES))
   private field = new GameField(ROWS, COLUMNS)
-  private prevSec = 0
-  private tickTime = 1000
   private shiftTime = 50
   private lastShift = 0
-  public linesCount = 0
+  private freezeCooldown = 1000
+  private freezeAfter = 1000
   private buttonStates = new Array<boolean>()
-  public update(userInput: boolean[], time: number, stopGame: () => void) {
-    const { prevSec, activePiece, field } = this
+  private prevTime = 0
+  public statistics = {
+    lines: 0,
+    score: 0,
+  }
+  public update(userInput: boolean[], time: number): boolean {
+    const { activePiece, field } = this
     this.processInput(this.buttonStates, userInput, time)
     this.buttonStates = [...userInput]
+    const dt = time - this.prevTime
+    this.prevTime = time
+    this.freezeAfter -= dt
     if (activePiece) {
-      if (prevSec != Math.ceil(time / this.tickTime)) {
-        this.prevSec = Math.ceil(time / this.tickTime)
+      if (this.freezeAfter <= 0) {
         if (field.hasTouchBottom(activePiece)) {
           this.fixPiece(field, activePiece)
         } else {
-          this.pieceDown(activePiece, field)
+          this.pieceDown(activePiece)
+          this.freezeAfter = this.freezeCooldown
         }
       }
     } else {
-      this.activePiece = new Piece(
-        0,//getRandomInt(COLUMNS - 2),
-        5,
-        ...getRandomItem(PIECES),
-      )
+      this.activePiece = new Piece(0, 5, ...getRandomItem(PIECES))
+      this.freezeAfter = this.freezeCooldown
       if (!field.pieceSpaceIsUnoccupied(this.activePiece)) {
-        stopGame()
+        return true
       }
     }
-    // if there is no unoccupied space call stopGame()
+    return false
   }
 
   private fixPiece(field: GameField, activePiece: Piece) {
-    this.linesCount+=field.append(activePiece)
+    const linesDestroyed = field.append(activePiece)
+    this.statistics.lines += linesDestroyed
+    this.statistics.score += [0, 100, 300, 500, 800][linesDestroyed]
     this.activePiece = null
   }
 
@@ -130,7 +132,7 @@ export class Game {
               break
             case Actions.HardDrop:
               if (this.activePiece) {
-                this.pieceHardDown(this.activePiece, this.field);
+                this.statistics.score += this.pieceHardDown(this.activePiece) * 2;
                 this.fixPiece(this.field, this.activePiece)
               }
               break
@@ -146,7 +148,8 @@ export class Game {
               break
             case Actions.SoftDrop:
               if (this.activePiece)
-                this.pieceDown(this.activePiece, this.field)
+                this.statistics.score += this.pieceDown(this.activePiece) ? 1 : 0
+              this.freezeAfter = this.freezeCooldown
               break
             default:
               shifted = false
@@ -154,20 +157,22 @@ export class Game {
         }
       }
     }
-    if(shifted) {
+    if (shifted) {
       this.lastShift = time
     }
   }
 
-  private pieceDown(activePiece: Piece, field: GameField): boolean {
-    if (!field.hasTouchBottom(activePiece)) {
+  private pieceDown(activePiece: Piece): boolean {
+    if (!this.field.hasTouchBottom(activePiece)) {
       activePiece.shift(1, 0)
       return true
     }
     return false
   }
-  private pieceHardDown(activePiece: Piece, field: GameField): void {
-    while (this.pieceDown(activePiece, this.field));
+  private pieceHardDown(activePiece: Piece): number {
+    let linesDown = 0
+    while (this.pieceDown(activePiece)) ++linesDown
+    return linesDown
   }
   private tryShift(di: number, dj: number) {
     const { activePiece, field } = this
@@ -194,7 +199,7 @@ export class Game {
     if (activePiece) {
       activePiece.draw(ctx)
       const backupRow = activePiece.row
-      this.pieceHardDown(activePiece, this.field)
+      this.pieceHardDown(activePiece)
       activePiece.draw(ctx, false, true)
       activePiece.row = backupRow
     }
@@ -204,10 +209,6 @@ export class Game {
 
 function getRandomInt(max: number) {
   return Math.floor(Math.random() * Math.floor(max))
-}
-
-function getRandomColor() {
-  return COLORS[getRandomInt(COLORS.length)]
 }
 
 function getRandomItem<T>(arr: T[]): T {

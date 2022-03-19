@@ -1,33 +1,129 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-	<title>Tetris</title>
-	<meta charset="UTF-8" />
+  <title>Tetris</title>
+  <meta charset="UTF-8" />
   <style>
-    * { margin:0; padding:0; }
-    html, body {
-      width:100%;
-      height:100%;
+    * {
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
       background: #758FC7;
       display: flex;
       justify-content: center;
       align-items: center;
     }
+
     body {
       display: flex;
-      flex-direction: column-reverse;
+      flex-direction: column;
     }
+
     canvas {
-      display:block;
+      display: block;
       width: 264px;
       height: 528px;
       background: #262B39;
     }
+
+    * {
+      font-family: 'Courier New', Courier, monospace;
+    }
+
+    #gameover {
+      background-color: #AA0000aa;
+      color: white;
+      font-weight: 700;
+    }
+    #gamehello {
+      background-color: #758FC7;
+      color: white;
+      font-weight: 700;
+    }
+    .dialog {
+      position: absolute;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-around;
+      align-items: center;
+      width: 264px;
+      height: 528px;
+    }
+
+    .dialog_hidden {
+      display: none;
+    }
+
+    .statistics>section {
+      margin: 8px;
+    }
+
+    button {
+      padding: 8px;
+      border: none;
+      border-radius: 5px;
+      background-color: #FED248;
+      cursor: pointer;
+    }
+
+    .ingame_hidden {
+      visibility: hidden;
+    }
+    
+    .controls-desc {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+    .controls-desc > header {
+      text-align: center;
+    }
+    .controls-desc > section {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 8px;
+    }
   </style>
 </head>
+
 <body>
-  <div>Lines: <span id="lines"></span></div>
-	<canvas width="264px" height="528px" id='cnvs'></canvas>
-	<script src="./src/index.ts" type="module"></script>
+  <main>
+    <article id="gamehello" class="dialog">
+      <header>
+        <h2>Тетрис</h2>
+      </header>
+      <section class="controls-desc">
+        <header><h3>Управление</h3></header>
+      </section>
+      <footer>
+        <button class="new-game">Начать игру</button>
+      </footer>
+    </article>
+    <article id="gameover" class="dialog dialog_hidden">
+      <header>
+        <h2>Игра окончена</h2>
+      </header>
+      <section class="statistics">
+        <section>Уничтожено линий: <span class="statistics__lines"></span></section>
+        <section>Счёт: <span class="statistics__score"></span></section>
+      </section>
+      <footer>
+        <button class="new-game">Новая игра</button>
+      </footer>
+    </article>
+    <canvas width="264px" height="528px" id='cnvs'></canvas>
+  </main>
+  <section class="statistics ingame ingame_hidden">
+    <section>Уничтожено линий: <span class="statistics__lines"></span></section>
+    <section>Счёт: <span class="statistics__score"></span></section>
+  </section>
+  <script src="./src/index.ts" type="module"></script>
 </body>
+
 </html>

@@ -66,29 +66,39 @@ export enum Actions {
   SoftDrop, HardDrop,
 }
 
-export enum ButtonState {
-  Free = 0,
-  Press = 1,
-  StartPress = 2,
+class Statistics {
+  lines = 0
+  private _score = 0
+  public get score() {
+    return this._score
+  }
+  public get level() {
+    return Math.floor(this.lines/10)+1
+  }
+  public set score(value: number) {
+    this._score += this.level * (value - this._score)
+  }
 }
 
 export class Game {
+  public static statisticLabels: Record<keyof Game["statistics"], string> = {
+    lines: "Уничтожено линий",
+    level: "Уровень",
+    score: "Счёт",
+  }
+  public statistics = new Statistics()
   private activePiece: Piece | null = new Piece(0, 5, ...getRandomItem(PIECES))
   private field = new GameField(ROWS, COLUMNS)
   private shiftTime = 50
   private lastShift = 0
-  private freezeCooldown = 1000
-  private freezeAfter = 1000
+  private get freezeCooldown() {
+    return Math.max(30, 1000 - 40 * Math.min(10, this.statistics.level-1) - 30 * (this.statistics.level-1))
+  }
+  private freezeAfter = this.freezeCooldown
   private buttonStates = new Array<boolean>()
   private prevTime = 0
-  public statistics = {
-    lines: 0,
-    score: 0,
-  }
   public update(userInput: boolean[], time: number): boolean {
     const { activePiece, field } = this
-    this.processInput(this.buttonStates, userInput, time)
-    this.buttonStates = [...userInput]
     const dt = time - this.prevTime
     this.prevTime = time
     this.freezeAfter -= dt
@@ -101,6 +111,7 @@ export class Game {
           this.freezeAfter = this.freezeCooldown
         }
       }
+      this.processInput(this.buttonStates, userInput, time)
     } else {
       this.activePiece = new Piece(0, 5, ...getRandomItem(PIECES))
       this.freezeAfter = this.freezeCooldown
@@ -108,6 +119,7 @@ export class Game {
         return true
       }
     }
+    this.buttonStates = [...userInput]
     return false
   }
 

@@ -4,20 +4,35 @@ import {
 } from './tetris'
 
 const canvas = document.getElementById('cnvs') as HTMLCanvasElement
+const autoStart = false
 const tickLength = 15 //ms
 let lastTick = 0
 let stopCycle = 0
 
-let game = new Game()
+function staticLineView(parent: Element, label: string, cssClass: string): HTMLElement {
+  const line = document.createElement("section")
+  line.innerText = `${label}: `
+  const output = document.createElement("span")
+  output.className = cssClass
+  line.appendChild(output)
+  parent.appendChild(line)
+  return output
+}
+
 const updateScoreView = (() => {
   const scoreKey = "statistics" as const
-  const keys = Object.keys(game[scoreKey]) as (keyof Game[typeof scoreKey])[]
+  const keys = Object.keys(Game.statisticLabels) as (keyof Game[typeof scoreKey])[]
   const elements = Object.fromEntries(
-    keys.map(key => [key, Array.from(document.querySelectorAll(`.${scoreKey}__${key}`))])
+    keys.map(key => [key, new Array<HTMLElement>()])
   ) as Record<keyof Game[typeof scoreKey], HTMLElement[]>
+  document.querySelectorAll(`.${scoreKey}`).forEach(root => {
+    keys.forEach(key => elements[key].push(staticLineView(root, Game.statisticLabels[key], `${scoreKey}__${key}`)))
+  })
+
+
   return (statistics: Game[typeof scoreKey]) => {
-    for(let key of keys)
-      for(let element of elements[key])
+    for (let key of keys)
+      for (let element of elements[key])
         element.textContent = statistics[key].toString()
   }
 })();
@@ -37,15 +52,14 @@ const keyboardMapping: Record<string, Actions | undefined> = {
 }
 
 const controlsHelp = gameHelloDialog.querySelector('.controls-desc') as HTMLElement
-for(let control in keyboardMapping) {
+for (let control in keyboardMapping) {
   const action = Actions[keyboardMapping[control]!]
   const section = document.createElement('section')
   section.innerHTML = `<span>${splitCamelCase(action)}</span><span>${splitCamelCase(control)}</span>`
   controlsHelp.append(section)
 }
 
-let inputBuffer = new Array<boolean>()
-console.log(inputBuffer)
+const inputBuffer = new Array<boolean>(Object.keys(keyboardMapping).length).fill(false)
 document.addEventListener('keyup', function (ev: KeyboardEvent) {
   const action = keyboardMapping[ev.code]
   if (action !== undefined)
@@ -56,7 +70,10 @@ document.addEventListener('keydown', function (ev: KeyboardEvent) {
   if (action !== undefined)
     inputBuffer[action] = true
 })
+let game = new Game()
 
+if (autoStart)
+  restartGame()
 function run(tFrame: number) {
   stopCycle = window.requestAnimationFrame(run)
 

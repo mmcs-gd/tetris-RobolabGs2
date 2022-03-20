@@ -1,5 +1,6 @@
 import Piece, { Mask } from './Piece'
 import GameField from './GameField'
+import { drawField, drawPiece } from './graphics'
 
 const COLUMNS = 12
 const ROWS = 24
@@ -64,6 +65,7 @@ export enum Actions {
   MoveLeft, MoveRight,
   RotateLeft, RotateRight,
   SoftDrop, HardDrop,
+  Hold,
 }
 
 class Statistics {
@@ -88,6 +90,9 @@ export class Game {
   }
   public statistics = new Statistics()
   private activePiece: Piece | null = new Piece(0, 5, ...getRandomItem(PIECES))
+  public nextPieces = new Array(5).fill(null).map(() => new Piece(0, 5, ...getRandomItem(PIECES)))
+  public holdedPiece: Piece | null = null
+  private fromHold = false
   private field = new GameField(ROWS, COLUMNS)
   private shiftTime = 50
   private lastShift = 0
@@ -113,8 +118,10 @@ export class Game {
       }
       this.processInput(this.buttonStates, userInput, time)
     } else {
-      this.activePiece = new Piece(0, 5, ...getRandomItem(PIECES))
+      this.activePiece = this.nextPieces.shift()!
+      this.nextPieces.push(new Piece(0, 5, ...getRandomItem(PIECES)))
       this.freezeAfter = this.freezeCooldown
+      this.fromHold = false
       if (!field.pieceSpaceIsUnoccupied(this.activePiece)) {
         return true
       }
@@ -148,6 +155,15 @@ export class Game {
                 this.fixPiece(this.field, this.activePiece)
               }
               break
+            case Actions.Hold:
+              if (this.activePiece && !this.fromHold) {
+                this.activePiece.row = 0
+                this.activePiece.column = 5
+                const tmp = this.holdedPiece
+                this.holdedPiece = this.activePiece
+                this.activePiece = tmp
+                this.fromHold = true
+              }
           }
         else if (time - this.lastShift >= this.shiftTime) {
           shifted = true
@@ -209,13 +225,13 @@ export class Game {
     const { activePiece, field } = this
 
     if (activePiece) {
-      activePiece.draw(ctx)
+      drawPiece(activePiece, ctx)
       const backupRow = activePiece.row
       this.pieceHardDown(activePiece)
-      activePiece.draw(ctx, false, true)
+      drawPiece(activePiece, ctx, false, true)
       activePiece.row = backupRow
     }
-    field.draw(ctx)
+    drawField(field, ctx)
   }
 }
 

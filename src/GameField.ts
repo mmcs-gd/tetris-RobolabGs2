@@ -1,4 +1,4 @@
-import Piece, { drawSquare, toCoords } from "./Piece"
+import Piece from "./Piece"
 
 export default class GameField {
   private readonly field: (string | null)[][]
@@ -14,7 +14,7 @@ export default class GameField {
   }
 
   hasTouchBottom(piece: Piece) {
-    return piece.any((i, j) => j === this.bottomRow || this.field[j+1][i] !== null)
+    return piece.any((i, j) => j === this.bottomRow || this.field[j + 1][i] !== null)
   }
   // return count filled lines
   append(piece: Piece) {
@@ -22,26 +22,20 @@ export default class GameField {
       this.field[j][i] = piece.color
     })
     let filled = 0;
-    for(let row = piece.row; row < Math.min(piece.row+piece.size, this.rows); row++) {
-      if(this.field[row].every(cell => cell !== null)) {
+    for (let row = piece.row; row < Math.min(piece.row + piece.size, this.rows); row++) {
+      if (this.field[row].every(cell => cell !== null)) {
         filled++;
-        for(let j = row; j > 0; j--)
-          this.field[j] = this.field[j-1]
+        for (let j = row; j > 0; j--)
+          this.field[j] = this.field[j - 1]
         this.field[0] = new Array(this.colums).fill(null)
       }
     }
     return filled;
   }
-
-  draw(ctx: CanvasRenderingContext2D) {
-    for (let i = 0; i < this.colums; i++)
-      for (let j = 0; j < this.rows; j++) {
-        ctx.strokeStyle = "#444"
-        const [x, y] = toCoords(i, j)
-        ctx.strokeRect(x-1, y-1, 22, 22)
-        if (ctx.fillStyle = this.field[j][i] || "") {
-          drawSquare(ctx, i, j)
-        }
+  forEach(callback: (cell: string | null, column: number, row: number) => void) {
+    for (let j = 0; j < this.rows; j++)
+      for (let i = 0; i < this.colums; i++) {
+        callback(this.field[j][i], i, j)
       }
   }
 }

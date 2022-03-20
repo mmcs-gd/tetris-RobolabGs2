@@ -15,21 +15,26 @@
       width: 100%;
       height: 100%;
       background: #758FC7;
-      display: flex;
-      justify-content: center;
-      align-items: center;
     }
 
-    body {
+    body, main {
+      align-items: center;
+      justify-content: center;
       display: flex;
-      flex-direction: column;
+      /* flex-direction: column; */
+    }
+
+    body > * {
+      flex: 1;
     }
 
     canvas {
       display: block;
+      background: #262B39;
+    }
+    canvas.field {
       width: 264px;
       height: 528px;
-      background: #262B39;
     }
 
     * {
@@ -93,6 +98,7 @@
 </head>
 
 <body>
+  <section></section>
   <main>
     <article id="gamehello" class="dialog">
       <header>
@@ -115,9 +121,11 @@
         <button class="new-game">Новая игра</button>
       </footer>
     </article>
-    <canvas width="264px" height="528px" id='cnvs'></canvas>
+    <canvas class="field" width="264px" height="528px" id='cnvs'></canvas>
   </main>
-  <section class="statistics ingame ingame_hidden">
+  <section>
+    <canvas class="hold" width="320px" height="200px"></canvas>
+    <section class="statistics ingame ingame_hidden"></section>
   </section>
   <script src="./src/index.ts" type="module"></script>
 </body>

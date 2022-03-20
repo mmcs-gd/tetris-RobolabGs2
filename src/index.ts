@@ -1,10 +1,12 @@
+import { drawMask } from './graphics'
 import {
   Actions,
   Game
 } from './tetris'
 
 const canvas = document.getElementById('cnvs') as HTMLCanvasElement
-const autoStart = false
+const holdedCanvas = document.querySelector('canvas.hold') as HTMLCanvasElement
+const autoStart = true
 const tickLength = 15 //ms
 let lastTick = 0
 let stopCycle = 0
@@ -49,6 +51,7 @@ const keyboardMapping: Record<string, Actions | undefined> = {
   "ArrowDown": Actions.SoftDrop,
   "KeyZ": Actions.RotateLeft,
   "Space": Actions.HardDrop,
+  "KeyC": Actions.Hold,
 }
 
 const controlsHelp = gameHelloDialog.querySelector('.controls-desc') as HTMLElement
@@ -58,7 +61,7 @@ for (let control in keyboardMapping) {
   section.innerHTML = `<span>${splitCamelCase(action)}</span><span>${splitCamelCase(control)}</span>`
   controlsHelp.append(section)
 }
-
+const holdCtx = holdedCanvas.getContext('2d')!
 const inputBuffer = new Array<boolean>(Object.keys(keyboardMapping).length).fill(false)
 document.addEventListener('keyup', function (ev: KeyboardEvent) {
   const action = keyboardMapping[ev.code]
@@ -96,6 +99,20 @@ function run(tFrame: number) {
   }
 
   game.draw(canvas, tFrame)
+  holdCtx.clearRect(0, 0, holdedCanvas.width, holdedCanvas.height)
+  holdCtx.save()
+  game.nextPieces.forEach((piece, i) => {
+    holdCtx.fillStyle = piece.color
+    drawMask(piece.mask, holdCtx)
+    holdCtx.translate(22*4, 0)
+  })
+  holdCtx.restore()
+  if(game.holdedPiece) {
+    holdCtx.fillStyle = game.holdedPiece.color
+    holdCtx.translate(0, 22*5)
+    drawMask(game.holdedPiece.mask, holdCtx)
+    holdCtx.translate(0, -22*5)
+  }
 }
 
 function stopGame() {

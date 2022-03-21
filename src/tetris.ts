@@ -1,6 +1,7 @@
 import Piece, { Mask } from './Piece'
 import GameField from './GameField'
 import { drawField, drawPiece } from './graphics'
+import { Observable } from './observable'
 
 const COLUMNS = 12
 const ROWS = 24
@@ -60,7 +61,7 @@ const CLASSIC_TETRAMINO = [
   ],
 ]
 
-const PIECES = CLASSIC_TETRAMINO.map((mask, i) => [COLORS[i], new Mask(mask)] as const)
+export const PIECES = CLASSIC_TETRAMINO.map((mask, i) => [COLORS[i], new Mask(mask)] as const)
 export enum Actions {
   MoveLeft, MoveRight,
   RotateLeft, RotateRight,
@@ -69,35 +70,68 @@ export enum Actions {
 }
 
 class Statistics {
+  constructor(
+    private readonly linesPerLevel: number,
+    private readonly onScoreUpdated: (statistics: Statistics) => void,
+  ) { }
   lines = 0
   private _score = 0
   public get score() {
     return this._score
   }
   public get level() {
-    return Math.floor(this.lines/10)+1
+    return Math.floor(this.lines / this.linesPerLevel) + 1
   }
   public set score(value: number) {
     this._score += this.level * (value - this._score)
+    this.onScoreUpdated(this)
   }
 }
 
-export class Game {
+interface GameEvents {
+  nextLevel: { level: number }
+  updateScore: Statistics
+  hold: Game["holdedPiece"]
+  drop: Game["nextPieces"]
+}
+
+export class Game extends Observable<GameEvents> {
   public static statisticLabels: Record<keyof Game["statistics"], string> = {
     lines: "Уничтожено линий",
     level: "Уровень",
     score: "Счёт",
   }
-  public statistics = new Statistics()
+  constructor(maxHistory: number = 1, maxHold: number = 0, private linesPerLevel = 10) {
+    super()
+    this.nextPieces = new Array(Math.max(1, maxHistory)).fill(null).map(() => new Piece(0, 5, ...getRandomItem(PIECES)))
+    this.holdedPiece = new Array(maxHold).fill(null)
+  }
+  public set maxHold(value: number) {
+    if (this.holdedPiece.length > value) {
+      this.holdedPiece = this.holdedPiece.slice(0, value)
+    } else {
+      for (let i = this.holdedPiece.length; i < value; i++)
+        this.holdedPiece.push(null)
+    }
+  }
+  public set maxHistory(value: number) {
+    if (this.nextPieces.length > value) {
+      this.nextPieces = this.nextPieces.slice(0, value)
+    } else {
+      for (let i = this.nextPieces.length; i < value; i++)
+        this.nextPieces.push(new Piece(0, 5, ...getRandomItem(PIECES)))
+    }
+  }
+  public readonly statistics = new Statistics(this.linesPerLevel, (s) => this.dispatchEvent("updateScore", s))
   private activePiece: Piece | null = new Piece(0, 5, ...getRandomItem(PIECES))
-  public nextPieces = new Array(5).fill(null).map(() => new Piece(0, 5, ...getRandomItem(PIECES)))
-  public holdedPiece: Piece | null = null
-  private fromHold = false
+  public nextPieces: Piece[]
+  public holdedPiece: (Piece | null)[]
+  private holdIndex = 0
   private field = new GameField(ROWS, COLUMNS)
-  private shiftTime = 50
+  private shiftTime = 60
   private lastShift = 0
   private get freezeCooldown() {
-    return Math.max(30, 1000 - 40 * Math.min(10, this.statistics.level-1) - 30 * (this.statistics.level-1))
+    return Math.max(30, 1000 - 40 * Math.min(10, this.statistics.level - 1) - 30 * (this.statistics.level - 1))
   }
   private freezeAfter = this.freezeCooldown
   private buttonStates = new Array<boolean>()
@@ -120,8 +154,9 @@ export class Game {
     } else {
       this.activePiece = this.nextPieces.shift()!
       this.nextPieces.push(new Piece(0, 5, ...getRandomItem(PIECES)))
+      this.dispatchEvent("drop", this.nextPieces)
       this.freezeAfter = this.freezeCooldown
-      this.fromHold = false
+      this.holdIndex = 0
       if (!field.pieceSpaceIsUnoccupied(this.activePiece)) {
         return true
       }
@@ -131,10 +166,13 @@ export class Game {
   }
 
   private fixPiece(field: GameField, activePiece: Piece) {
+    const oldLevel = this.statistics.level
     const linesDestroyed = field.append(activePiece)
     this.statistics.lines += linesDestroyed
     this.statistics.score += [0, 100, 300, 500, 800][linesDestroyed]
     this.activePiece = null
+    if (oldLevel != this.statistics.level)
+      this.dispatchEvent("nextLevel", this.statistics)
   }
 
   private processInput(oldInput: boolean[], input: boolean[], time: number) {
@@ -144,10 +182,10 @@ export class Game {
         if (!oldInput[action])
           switch (action) {
             case Actions.RotateRight:
-              this.tryRotate(1)
+              this.tryRotate(-1)
               break
             case Actions.RotateLeft:
-              this.tryRotate(-1)
+              this.tryRotate(1)
               break
             case Actions.HardDrop:
               if (this.activePiece) {
@@ -156,13 +194,14 @@ export class Game {
               }
               break
             case Actions.Hold:
-              if (this.activePiece && !this.fromHold) {
+              if (this.activePiece && this.holdIndex < this.holdedPiece.length) {
                 this.activePiece.row = 0
                 this.activePiece.column = 5
-                const tmp = this.holdedPiece
-                this.holdedPiece = this.activePiece
+                const tmp = this.holdedPiece[this.holdIndex]
+                this.holdedPiece[this.holdIndex] = this.activePiece
                 this.activePiece = tmp
-                this.fromHold = true
+                this.holdIndex++
+                this.dispatchEvent("hold", this.holdedPiece)
               }
           }
         else if (time - this.lastShift >= this.shiftTime) {

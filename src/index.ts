@@ -1,12 +1,35 @@
-import { drawMask } from './graphics'
+import { drawMask, setupPieceView } from './graphics'
+import { listenKeyboard, remapActionsToKeys } from './input'
 import {
   Actions,
-  Game
+  Game,
+  PIECES
 } from './tetris'
+import { loadSettingsFromURL } from './utils'
+
+const {
+  autoStart,
+  ...settings
+} = loadSettingsFromURL({
+  autoStart: false,
+  linesPerLevel: 10,
+})
+
+const player = {
+  next: 0,
+  hold: 0,
+}
 
 const canvas = document.getElementById('cnvs') as HTMLCanvasElement
-const holdedCanvas = document.querySelector('canvas.hold') as HTMLCanvasElement
-const autoStart = true
+const holdView = Array.from(document.querySelectorAll(".piece-view_hold"))
+const lockElements = (count: number) => (el: Element, i: number): boolean => el.classList.toggle("locked", !(i < count))
+const displayMaskInElem = setupPieceView(13, PIECES)
+const nextViews = Array.from(document.querySelectorAll(".piece-view_next"))
+holdView.forEach(lockElements(player.hold))
+nextViews.forEach(lockElements(player.next))
+const displayHold = holdView.map(elem => displayMaskInElem.bind(undefined, elem as HTMLElement))
+const displayNextPiece = nextViews.map(elem => displayMaskInElem.bind(undefined, elem as HTMLElement))
+
 const tickLength = 15 //ms
 let lastTick = 0
 let stopCycle = 0
@@ -42,7 +65,6 @@ const updateScoreView = (() => {
 document.querySelectorAll('.new-game').forEach(el => el.addEventListener('click', restartGame))
 const gameOverDialog = document.getElementById('gameover') as HTMLElement
 const gameHelloDialog = document.getElementById('gamehello') as HTMLElement
-const gameUI = document.querySelectorAll('.ingame')
 
 const keyboardMapping: Record<string, Actions | undefined> = {
   "ArrowRight": Actions.MoveRight,
@@ -52,29 +74,28 @@ const keyboardMapping: Record<string, Actions | undefined> = {
   "KeyZ": Actions.RotateLeft,
   "Space": Actions.HardDrop,
   "KeyC": Actions.Hold,
+
+  "KeyD": Actions.MoveRight,
+  "KeyA": Actions.MoveLeft,
+  "KeyW": Actions.RotateRight,
+  "KeyS": Actions.SoftDrop,
+  "KeyQ": Actions.RotateLeft,
+  "KeyE": Actions.Hold,
 }
+
+
 
 const controlsHelp = gameHelloDialog.querySelector('.controls-desc') as HTMLElement
-for (let control in keyboardMapping) {
-  const action = Actions[keyboardMapping[control]!]
+const actionsToKeys = remapActionsToKeys(keyboardMapping)
+for (let action in actionsToKeys) {
+  const controls = actionsToKeys[action]
   const section = document.createElement('section')
-  section.innerHTML = `<span>${splitCamelCase(action)}</span><span>${splitCamelCase(control)}</span>`
+  section.innerHTML = `<span>${splitCamelCase(action)}</span><span>${controls.map(splitCamelCase).join(", ")}</span>`
   controlsHelp.append(section)
 }
-const holdCtx = holdedCanvas.getContext('2d')!
-const inputBuffer = new Array<boolean>(Object.keys(keyboardMapping).length).fill(false)
-document.addEventListener('keyup', function (ev: KeyboardEvent) {
-  const action = keyboardMapping[ev.code]
-  if (action !== undefined)
-    inputBuffer[action] = false
-})
-document.addEventListener('keydown', function (ev: KeyboardEvent) {
-  const action = keyboardMapping[ev.code]
-  if (action !== undefined)
-    inputBuffer[action] = true
-})
-let game = new Game()
 
+let game = new Game()
+const inputBuffer = listenKeyboard(keyboardMapping)
 if (autoStart)
   restartGame()
 function run(tFrame: number) {
@@ -85,51 +106,55 @@ function run(tFrame: number) {
 
   if (tFrame > nextTick) {
     const timeSinceTick = tFrame - lastTick
-    numTicks = Math.floor(timeSinceTick / tickLength)
+    numTicks = Math.max(Math.floor(timeSinceTick / tickLength), 4)
   }
 
   for (let i = 0; i < Math.min(1, numTicks); i++) {
     lastTick = lastTick + tickLength
     const finished = game.update(inputBuffer, lastTick)
-    updateScoreView(game.statistics)
     if (finished) {
       stopGame()
       return
     }
   }
-
   game.draw(canvas, tFrame)
-  holdCtx.clearRect(0, 0, holdedCanvas.width, holdedCanvas.height)
-  holdCtx.save()
-  game.nextPieces.forEach((piece, i) => {
-    holdCtx.fillStyle = piece.color
-    drawMask(piece.mask, holdCtx)
-    holdCtx.translate(22*4, 0)
-  })
-  holdCtx.restore()
-  if(game.holdedPiece) {
-    holdCtx.fillStyle = game.holdedPiece.color
-    holdCtx.translate(0, 22*5)
-    drawMask(game.holdedPiece.mask, holdCtx)
-    holdCtx.translate(0, -22*5)
-  }
 }
 
 function stopGame() {
   window.cancelAnimationFrame(stopCycle)
   gameOverDialog.classList.remove("dialog_hidden")
-  gameUI.forEach(el => el.classList.toggle("ingame_hidden", true))
+  document.body.classList.toggle("ingame_hidden", true)
 }
 
 function restartGame() {
-  game = new Game()
+  game = new Game(player.next, player.hold, settings.linesPerLevel)
+  holdView.forEach(lockElements(game.maxHold))
+  nextViews.forEach(lockElements(game.maxHistory))
+  game.addEventListener('hold', function () {
+    displayHold.forEach((display, i) => {
+      display(this.holdedPiece[i]?.mask)
+    })
+  })
+  game.addEventListener('drop', function () {
+    displayNextPiece.forEach((display, i) => {
+      display(this.nextPieces[i]?.mask)
+    })
+  })
+  game.addEventListener('nextLevel', function ({ level }) {
+    this.maxHold = Math.min(3, (level / 5) | 0)
+    this.maxHistory = Math.min(4, (level / 3) | 0)
+    holdView.forEach(lockElements(this.holdedPiece.length))
+    nextViews.forEach(lockElements(this.nextPieces.length))
+  })
+  game.addEventListener('updateScore', updateScoreView)
+  updateScoreView(game.statistics)
   lastTick = performance.now()
-  gameUI.forEach(el => el.classList.toggle("ingame_hidden", false))
+  document.body.classList.toggle("ingame_hidden", false)
   gameOverDialog.classList.add("dialog_hidden")
   gameHelloDialog.classList.add("dialog_hidden")
   run(0)
 }
 
 function splitCamelCase(s: string) {
-  return s.split(/(?<=[a-z])(?=[A-Z])/g).join(" ")
+  return s.split(/(?<=[a-z])(?=[A-Z])/g).filter(str => !/(Arrow)|(Key)/.test(str)).join(" ")
 }

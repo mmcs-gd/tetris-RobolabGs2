@@ -1,6 +1,5 @@
 export function loadSettingsFromURL<T extends Record<string, any>>(defaults: T): T {
     const url = new URL(location.href);
-    const keys = Object.keys(defaults) as (keyof T)[];
     return Object.fromEntries(Object.entries(defaults).map(([key, defaultValue]) =>
         [key, getOrDefault(key, defaultValue, url.searchParams)]
     )) as T

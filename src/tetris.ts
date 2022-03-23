@@ -270,7 +270,7 @@ export class Game extends Observable<GameEvents> {
       drawPiece(activePiece, ctx, false, true)
       activePiece.row = backupRow
     }
-    drawField(field, ctx)
+    drawField(field, ctx, activePiece, this.statistics.level)
   }
 }
 

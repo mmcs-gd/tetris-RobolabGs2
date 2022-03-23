@@ -123,6 +123,7 @@ function run(tFrame: number) {
 function stopGame() {
   window.cancelAnimationFrame(stopCycle)
   gameOverDialog.classList.remove("dialog_hidden")
+  gameOverDialog.querySelector("button")?.focus()
   document.body.classList.toggle("ingame_hidden", true)
 }
 

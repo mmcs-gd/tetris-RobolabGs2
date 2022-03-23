@@ -4,7 +4,7 @@ export default class GameField {
   private readonly field: (string | null)[][]
   public bottomRow: number = this.rows - 1
   constructor(public rows: number, public colums: number) {
-    this.field = new Array()
+    this.field = new Array(rows)
     for (let i = 0; i < rows; i++)
       this.field[i] = new Array(colums).fill(null)
   }
@@ -32,8 +32,15 @@ export default class GameField {
     }
     return filled;
   }
+  // forEach line by line: left to right, up to down
   forEach(callback: (cell: string | null, column: number, row: number) => void) {
     for (let j = 0; j < this.rows; j++)
+      for (let i = 0; i < this.colums; i++) {
+        callback(this.field[j][i], i, j)
+      }
+  }
+  forEachDownUp(callback: (cell: string | null, column: number, row: number) => void) {
+    for (let j = this.rows - 1; 0 <= j; j--)
       for (let i = 0; i < this.colums; i++) {
         callback(this.field[j][i], i, j)
       }

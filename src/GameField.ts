@@ -2,9 +2,11 @@ import Piece from "./Piece"
 
 export default class GameField {
   private readonly field: (string | null)[][]
+  private filledLine: string[]
   public bottomRow: number = this.rows - 1
   constructor(public rows: number, public colums: number) {
     this.field = new Array(rows)
+    this.filledLine = new Array(colums).fill("orange")
     for (let i = 0; i < rows; i++)
       this.field[i] = new Array(colums).fill(null)
   }
@@ -17,20 +19,25 @@ export default class GameField {
     return piece.any((i, j) => j === this.bottomRow || this.field[j + 1][i] !== null)
   }
   // return count filled lines
-  append(piece: Piece) {
+  append(piece: Piece): number[] {
     piece.forEach((i, j) => {
       this.field[j][i] = piece.color
     })
-    let filled = 0;
+    const filled = new Array<number>()
     for (let row = piece.row; row < Math.min(piece.row + piece.size, this.rows); row++) {
       if (this.field[row].every(cell => cell !== null)) {
-        filled++;
-        for (let j = row; j > 0; j--)
-          this.field[j] = this.field[j - 1]
-        this.field[0] = new Array(this.colums).fill(null)
+        // this.field[row] = this.filledLine
+        filled.push(row)
       }
     }
     return filled;
+  }
+  clear(lines: number[]) {
+    for (let row of lines) {
+      for (let j = row; j > 0; j--)
+        this.field[j] = this.field[j - 1]
+      this.field[0] = new Array(this.colums).fill(null)
+    }
   }
   // forEach line by line: left to right, up to down
   forEach(callback: (cell: string | null, column: number, row: number) => void) {

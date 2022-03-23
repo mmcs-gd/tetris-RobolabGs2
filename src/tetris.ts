@@ -101,6 +101,7 @@ export class Game extends Observable<GameEvents> {
     level: "Уровень",
     score: "Счёт",
   }
+  private filledLines = new Array<[number, number[]]>()
   constructor(maxHistory: number = 1, maxHold: number = 0, private linesPerLevel = 10) {
     super()
     this.nextPieces = new Array(Math.max(1, maxHistory)).fill(null).map(() => new Piece(0, 5, ...getRandomItem(PIECES)))
@@ -136,11 +137,17 @@ export class Game extends Observable<GameEvents> {
   private freezeAfter = this.freezeCooldown
   private buttonStates = new Array<boolean>()
   private prevTime = 0
+  private currentTime = 0
   public update(userInput: boolean[], time: number): boolean {
     const { activePiece, field } = this
+    this.currentTime = time
     const dt = time - this.prevTime
     this.prevTime = time
     this.freezeAfter -= dt
+    if(this.filledLines[0] && this.filledLines[0][0] <= time) {
+      this.field.clear(this.filledLines[0][1])
+      this.filledLines.shift()
+    }
     if (activePiece) {
       if (this.freezeAfter <= 0) {
         if (field.hasTouchBottom(activePiece)) {
@@ -167,7 +174,10 @@ export class Game extends Observable<GameEvents> {
 
   private fixPiece(field: GameField, activePiece: Piece) {
     const oldLevel = this.statistics.level
-    const linesDestroyed = field.append(activePiece)
+    const filledLines = field.append(activePiece)
+    const linesDestroyed = (filledLines).length
+    if(linesDestroyed)
+      this.filledLines.push([this.currentTime+200, filledLines])
     this.statistics.lines += linesDestroyed
     this.statistics.score += [0, 100, 300, 500, 800][linesDestroyed]
     this.activePiece = null
@@ -270,7 +280,7 @@ export class Game extends Observable<GameEvents> {
       drawPiece(activePiece, ctx, false, true)
       activePiece.row = backupRow
     }
-    drawField(field, ctx, activePiece, this.statistics.level)
+    drawField(field, ctx, activePiece, this.statistics.level, this.filledLines.map(([_, lines]) => lines))
   }
 }
 

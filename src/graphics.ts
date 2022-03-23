@@ -81,6 +81,16 @@ function lightPiece(lightmap: LightMap, piece: Piece, alpha: number = 1) {
     })
 }
 
+function lightFilled(lightmap: LightMap, filled: number[]) {
+    filled.forEach((row) => {
+        for (let i = 0; i < lightmap.colums; i++)
+            for (let j = 0; j < lightmap.rows; j++) {
+                const distance = Math.abs(j - row)
+                lightmap.add(i, j, 1 / (1 + distance))
+            }
+    })
+}
+
 function drawWithLight(light: ReadonlyLightMap, f: GameField, ctx: CanvasRenderingContext2D) {
     f.forEach((cell, column, row) => {
         ctx.globalAlpha = light.get(column, row)
@@ -88,7 +98,7 @@ function drawWithLight(light: ReadonlyLightMap, f: GameField, ctx: CanvasRenderi
         const color = 0x44
         ctx.strokeStyle = `rgba(${color}, ${color}, ${color})`
         const [x, y] = toCoords(column, row)
-        ctx.strokeRect(x - 1, y - 1, 22, 22)
+        ctx.strokeRect(x - 1, y - 1, SIZE, SIZE)
         if (ctx.fillStyle = cell || "") {
             drawSquare(ctx, column, row)
         }
@@ -148,16 +158,19 @@ function lightUpDown(lightmap: LightMap, f: GameField, opacity: number) {
     })
 }
 
-export function drawField(f: GameField, ctx: CanvasRenderingContext2D, piece: Piece | null, level: number) {
+export function drawField(f: GameField, ctx: CanvasRenderingContext2D, piece: Piece | null, level: number, filled: number[][]) {
     let light = new LightMap(f.colums, f.rows)
     let light2 = new LightMap(f.colums, f.rows)
     lightDownUp(light, f, Math.max(0.5, 1 - 0.05 * (level)))
+    lightFilled(light, filled.flat(1))
     if (piece) {
         lightPiece(light2, piece, level / 30)
     } else {
         lightPiece(light2, new Piece(0, 5, "", new Mask([[1, 1],[1, 1]])), level / 30)
     }
-    drawWithLight(new CombineLightMap(light, light2, (l1, l2) => Math.max(0, l1+l2)), f, ctx)
+    drawWithLight(new CombineLightMap(light, light2, (l1, l2) => Math.max(l1, l2)), f, ctx)
+    ctx.fillStyle = '#f009'
+    filled.forEach(lines => lines.forEach(line => ctx.fillRect(0, SIZE*line, SIZE*f.colums, SIZE)))
 }
 
 export function drawFieldSimple(f: GameField, ctx: CanvasRenderingContext2D) {

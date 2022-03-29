@@ -1,28 +1,221 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-	<title>Tetris</title>
-	<meta charset="UTF-8" />
+  <title>Tetris</title>
+  <meta charset="UTF-8" />
   <style>
-    * { margin:0; padding:0; }
-    html, body {
-      width:100%;
-      height:100%;
-      background: #758FC7;
-      display: flex;
-      justify-content: center;
-      align-items: center;
+    * {
+      margin: 0;
+      padding: 0;
     }
+
+    :root {
+      --field-background: #262B39;
+      --field-color: #c9cdcf;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      background: #758FC7;
+    }
+
+    body,
+    main {
+      align-items: center;
+      justify-content: center;
+      display: flex;
+    }
+
+    body>* {
+      flex: 1;
+    }
+
     canvas {
-      display:block;
+      display: block;
+      background: var(--field-background);
+    }
+
+    .piece-view {
+      background: var(--field-background);
+    }
+
+    canvas.field {
       width: 264px;
       height: 528px;
-      background: #262B39;
+    }
+
+    * {
+      font-family: 'Courier New', Courier, monospace;
+    }
+
+    #gameover {
+      background-color: #AA0000aa;
+      color: white;
+      font-weight: 700;
+    }
+
+    #gamehello {
+      background-color: #758FC7;
+      color: white;
+      font-weight: 700;
+    }
+
+    #gamepause {
+      background-color: #758FC7f0;
+      color: white;
+      font-weight: 700;
+    }
+
+    .dialog {
+      position: absolute;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-around;
+      align-items: center;
+      width: 266px;
+      height: 528px;
+      padding: 8px;
+      box-sizing: border-box;
+    }
+
+    .dialog_hidden {
+      display: none;
+    }
+
+    .statistics>section {
+      margin: 8px;
+    }
+
+    button {
+      padding: 8px;
+      border: none;
+      border-radius: 5px;
+      background-color: #FED248;
+      cursor: pointer;
+    }
+
+    .ingame_hidden .ingame {
+      visibility: hidden;
+    }
+
+    .controls-desc {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .controls-desc>header {
+      text-align: center;
+    }
+
+    .controls-desc>section {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 8px;
+    }
+
+    .hold-pieces,
+    .next-pieces {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--field-background);
+      color: var(--field-color);
+      padding: 4px;
+    }
+
+    .next-pieces {
+      border-radius: 5px 5px 0 0;
+    }
+
+    .hold-pieces {
+      border-radius: 0 0 5px 5px;
+    }
+
+    .piece-view.locked {
+      background-image: url(./src/lock.png);
+      background-size: contain;
+    }
+
+    .left-panel {
+      display: flex;
+      align-items: flex-start;
+    }
+
+    .left-panel>section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
   </style>
 </head>
-<body>
-	<canvas width="264px" height="528px" id='cnvs'></canvas>
-	<script src="./src/index.js" type="module"></script>
+
+<body class="ingame_hidden">
+  <section></section>
+  <main>
+    <article id="gamehello" class="dialog">
+      <header>
+        <h2>Tetris</h2>
+      </header>
+      <section class="controls-desc">
+        <header>
+          <h3>Controls</h3>
+        </header>
+      </section>
+      <footer>
+        <button class="new-game">Play</button>
+      </footer>
+    </article>
+    <article id="gameover" class="dialog dialog_hidden">
+      <header>
+        <h2>Game over</h2>
+      </header>
+      <section class="statistics">
+      </section>
+      <footer>
+        <button class="new-game">New game</button>
+      </footer>
+    </article>
+    <article id="gamepause" class="dialog dialog_hidden">
+      <header>
+        <h2>Pause</h2>
+      </header>
+      <section class="controls-desc">
+        <header>
+          <h3>Controls</h3>
+        </header>
+      </section>
+      <footer>
+        <button class="resume-game">Resume</button>
+      </footer>
+    </article>
+    <article class="field">
+      <section class="next-pieces ingame">
+        <header>Next:</header>
+        <div class="piece-view piece-view_next"></div>
+        <div class="piece-view piece-view_next"></div>
+        <div class="piece-view piece-view_next"></div>
+        <div class="piece-view piece-view_next"></div>
+      </section>
+      <canvas class="field" width="264px" height="528px" id='cnvs'></canvas>
+      <section class="hold-pieces ingame">
+        <header>Hold:</header>
+        <div class="piece-view piece-view_hold"></div>
+        <div class="piece-view piece-view_hold"></div>
+        <div class="piece-view piece-view_hold"></div>
+      </section>
+    </article>
+  </main>
+  <section class="ingame left-panel">
+    <section>
+      <section class="statistics"></section>
+      <button class="pause-game">Pause</button>
+    </section>
+  </section>
+  <script src="./src/index.ts" type="module"></script>
 </body>
+
 </html>

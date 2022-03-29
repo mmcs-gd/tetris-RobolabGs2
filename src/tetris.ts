@@ -66,13 +66,14 @@ export enum Actions {
   MoveLeft, MoveRight,
   RotateLeft, RotateRight,
   SoftDrop, HardDrop,
-  Hold,
+  Hold, Hold_1, Hold_2, Hold_3,
 }
 
 class Statistics {
   constructor(
     private readonly linesPerLevel: number,
     private readonly onScoreUpdated: (statistics: Statistics) => void,
+    private readonly shiftLevel: number,
   ) { }
   lines = 0
   private _score = 0
@@ -80,7 +81,7 @@ class Statistics {
     return this._score
   }
   public get level() {
-    return Math.floor(this.lines / this.linesPerLevel) + 1
+    return Math.floor(this.lines / this.linesPerLevel) + this.shiftLevel
   }
   public set score(value: number) {
     this._score += this.level * (value - this._score)
@@ -97,15 +98,17 @@ interface GameEvents {
 
 export class Game extends Observable<GameEvents> {
   public static statisticLabels: Record<keyof Game["statistics"], string> = {
-    lines: "Уничтожено линий",
-    level: "Уровень",
-    score: "Счёт",
+    lines: "Lines",
+    level: "Level",
+    score: "Score",
   }
   private filledLines = new Array<[number, number[]]>()
-  constructor(maxHistory: number = 1, maxHold: number = 0, private linesPerLevel = 10) {
+  constructor(maxHistory: number = 1, maxHold: number = 0, private linesPerLevel = 10, private shiftLevel = 1) {
     super()
     this.nextPieces = new Array(Math.max(1, maxHistory)).fill(null).map(() => new Piece(0, 5, ...getRandomItem(PIECES)))
     this.holdedPiece = new Array(maxHold).fill(null)
+    this.holded = new Array(maxHold).fill(false)
+    setTimeout(() => this.dispatchEvent("nextLevel", this.statistics), 0)
   }
   public set maxHold(value: number) {
     if (this.holdedPiece.length > value) {
@@ -113,6 +116,7 @@ export class Game extends Observable<GameEvents> {
     } else {
       for (let i = this.holdedPiece.length; i < value; i++)
         this.holdedPiece.push(null)
+      this.holded.push(false)
     }
   }
   public set maxHistory(value: number) {
@@ -123,10 +127,11 @@ export class Game extends Observable<GameEvents> {
         this.nextPieces.push(new Piece(0, 5, ...getRandomItem(PIECES)))
     }
   }
-  public readonly statistics = new Statistics(this.linesPerLevel, (s) => this.dispatchEvent("updateScore", s))
+  public readonly statistics: Statistics = new Statistics(this.linesPerLevel, (s) => this.dispatchEvent("updateScore", s), this.shiftLevel)
   private activePiece: Piece | null = new Piece(0, 5, ...getRandomItem(PIECES))
   public nextPieces: Piece[]
   public holdedPiece: (Piece | null)[]
+  private holded: boolean[]
   private holdIndex = 0
   private field = new GameField(ROWS, COLUMNS)
   private shiftTime = 60
@@ -159,14 +164,15 @@ export class Game extends Observable<GameEvents> {
       }
       this.processInput(this.buttonStates, userInput, time)
     } else {
-      this.activePiece = this.nextPieces.shift()!
       this.nextPieces.push(new Piece(0, 5, ...getRandomItem(PIECES)))
-      this.dispatchEvent("drop", this.nextPieces)
+      this.activePiece = this.nextPieces.shift()!
       this.freezeAfter = this.freezeCooldown
       this.holdIndex = 0
+      this.holded.fill(false)
       if (!field.pieceSpaceIsUnoccupied(this.activePiece)) {
         return true
       }
+      this.dispatchEvent("drop", this.nextPieces)
     }
     this.buttonStates = [...userInput]
     return false
@@ -204,15 +210,21 @@ export class Game extends Observable<GameEvents> {
               }
               break
             case Actions.Hold:
-              if (this.activePiece && this.holdIndex < this.holdedPiece.length) {
-                this.activePiece.row = 0
-                this.activePiece.column = 5
-                const tmp = this.holdedPiece[this.holdIndex]
-                this.holdedPiece[this.holdIndex] = this.activePiece
-                this.activePiece = tmp
-                this.holdIndex++
-                this.dispatchEvent("hold", this.holdedPiece)
+              if (this.activePiece) {
+                while (this.holdIndex < this.holdedPiece.length && !this.hold(this.holdIndex)) {
+                  this.holdIndex++
+                }
               }
+              break
+            case Actions.Hold_1:
+              this.hold(0)
+              break
+            case Actions.Hold_2:
+              this.hold(1)
+              break
+            case Actions.Hold_3:
+              this.hold(2)
+              break
           }
         else if (time - this.lastShift >= this.shiftTime) {
           shifted = true
@@ -224,9 +236,12 @@ export class Game extends Observable<GameEvents> {
               this.tryShift(0, -1)
               break
             case Actions.SoftDrop:
-              if (this.activePiece)
-                this.statistics.score += this.pieceDown(this.activePiece) ? 1 : 0
-              this.freezeAfter = this.freezeCooldown
+              if (this.activePiece) {
+                if (this.pieceDown(this.activePiece)) {
+                  this.statistics.score++
+                  this.freezeAfter = this.freezeCooldown
+                }
+              }
               break
             default:
               shifted = false
@@ -237,6 +252,20 @@ export class Game extends Observable<GameEvents> {
     if (shifted) {
       this.lastShift = time
     }
+  }
+
+  private hold(slot: number): boolean {
+    if (slot < this.holdedPiece.length && this.activePiece && !this.holded[slot]) {
+      this.activePiece.row = 0
+      this.activePiece.column = 5
+      const tmp = this.holdedPiece[slot]
+      this.holdedPiece[slot] = this.activePiece
+      this.activePiece = tmp
+      this.holded[slot] = true;
+      this.dispatchEvent("hold", this.holdedPiece)
+      return true
+    }
+    return false
   }
 
   private pieceDown(activePiece: Piece): boolean {

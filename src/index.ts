@@ -1,4 +1,4 @@
-import { drawMask, setupPieceView } from './graphics'
+import { setupPieceView } from './graphics'
 import { listenKeyboard, remapActionsToKeys } from './input'
 import {
   Actions,
@@ -13,20 +13,15 @@ const {
 } = loadSettingsFromURL({
   autoStart: false,
   linesPerLevel: 10,
+  startLevel: 1,
+  hardMode: false,
 })
-
-const player = {
-  next: 0,
-  hold: 0,
-}
 
 const canvas = document.getElementById('cnvs') as HTMLCanvasElement
 const holdView = Array.from(document.querySelectorAll(".piece-view_hold"))
 const lockElements = (count: number) => (el: Element, i: number): boolean => el.classList.toggle("locked", !(i < count))
 const displayMaskInElem = setupPieceView(13, PIECES)
 const nextViews = Array.from(document.querySelectorAll(".piece-view_next"))
-holdView.forEach(lockElements(player.hold))
-nextViews.forEach(lockElements(player.next))
 const displayHold = holdView.map(elem => displayMaskInElem.bind(undefined, elem as HTMLElement))
 const displayNextPiece = nextViews.map(elem => displayMaskInElem.bind(undefined, elem as HTMLElement))
 
@@ -63,8 +58,11 @@ const updateScoreView = (() => {
 })();
 
 document.querySelectorAll('.new-game').forEach(el => el.addEventListener('click', restartGame))
+document.querySelectorAll('.pause-game').forEach(el => el.addEventListener('click', pauseGame))
+document.querySelectorAll('.resume-game').forEach(el => el.addEventListener('click', resumeGame))
 const gameOverDialog = document.getElementById('gameover') as HTMLElement
 const gameHelloDialog = document.getElementById('gamehello') as HTMLElement
+const gamePauseDialog = document.getElementById('gamepause') as HTMLElement
 
 const keyboardMapping: Record<string, Actions | undefined> = {
   "ArrowRight": Actions.MoveRight,
@@ -81,18 +79,28 @@ const keyboardMapping: Record<string, Actions | undefined> = {
   "KeyS": Actions.SoftDrop,
   "KeyQ": Actions.RotateLeft,
   "KeyE": Actions.Hold,
+
+  "KeyR": Actions.RotateLeft,
+  "KeyT": Actions.Hold,
+
+  "Numpad1": Actions.Hold_1,
+  "Numpad2": Actions.Hold_2,
+  "Numpad3": Actions.Hold_3,
+  "Digit1": Actions.Hold_1,
+  "Digit2": Actions.Hold_2,
+  "Digit3": Actions.Hold_3,
 }
 
 
-
-const controlsHelp = gameHelloDialog.querySelector('.controls-desc') as HTMLElement
 const actionsToKeys = remapActionsToKeys(keyboardMapping)
-for (let action in actionsToKeys) {
-  const controls = actionsToKeys[action]
-  const section = document.createElement('section')
-  section.innerHTML = `<span>${splitCamelCase(action)}</span><span>${controls.map(splitCamelCase).join(", ")}</span>`
-  controlsHelp.append(section)
-}
+document.querySelectorAll('.controls-desc').forEach(controlsHelp => {
+  for (let action in actionsToKeys) {
+    const controls = actionsToKeys[action]
+    const section = document.createElement('section')
+    section.innerHTML = `<span>${splitCamelCase(action)}</span><span>${controls.map(splitCamelCase).join(", ")}</span>`
+    controlsHelp.append(section)
+  }
+})
 
 let game = new Game()
 const inputBuffer = listenKeyboard(keyboardMapping)
@@ -122,13 +130,27 @@ function run(tFrame: number) {
 
 function stopGame() {
   window.cancelAnimationFrame(stopCycle)
+  stopCycle = -1
   gameOverDialog.classList.remove("dialog_hidden")
   gameOverDialog.querySelector("button")?.focus()
   document.body.classList.toggle("ingame_hidden", true)
 }
 
+function pauseGame() {
+  window.cancelAnimationFrame(stopCycle)
+  stopCycle = -1
+  gamePauseDialog.classList.toggle("dialog_hidden", false)
+  document.body.classList.toggle("ingame_hidden", true)
+}
+
+function resumeGame() {
+  gamePauseDialog.classList.toggle("dialog_hidden", true)
+  document.body.classList.toggle("ingame_hidden", false)
+  run(0)
+}
+
 function restartGame() {
-  game = new Game(player.next, player.hold, settings.linesPerLevel)
+  game = new Game(1, 0, settings.linesPerLevel, settings.startLevel)
   holdView.forEach(lockElements(game.maxHold))
   nextViews.forEach(lockElements(game.maxHistory))
   game.addEventListener('hold', function () {
@@ -143,7 +165,7 @@ function restartGame() {
   })
   game.addEventListener('nextLevel', function ({ level }) {
     this.maxHold = Math.min(3, (level / 5) | 0)
-    this.maxHistory = Math.min(4, (level / 3) | 0)
+    this.maxHistory = settings.hardMode ? 0 : Math.min(4, (level / 3) | 0 + 1)
     holdView.forEach(lockElements(this.holdedPiece.length))
     nextViews.forEach(lockElements(this.nextPieces.length))
   })
@@ -157,5 +179,5 @@ function restartGame() {
 }
 
 function splitCamelCase(s: string) {
-  return s.split(/(?<=[a-z])(?=[A-Z])/g).filter(str => !/(Arrow)|(Key)/.test(str)).join(" ")
+  return s.split(/(?<=[a-z0-9])(?=[A-Z0-9])/g).filter(str => !/(Arrow)|(Key)|(Digit)/.test(str)).join(" ")
 }
